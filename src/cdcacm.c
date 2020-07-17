@@ -152,9 +152,9 @@ static void cdcacm_set_modem_state(usbd_device *dev, int iface, bool dsr, bool d
 	usbd_ep_write_packet(dev, 0x82 + iface, buf, 10);
 }
 
-static int cdcacm_control_request(usbd_device *dev,
+static enum usbd_request_return_codes cdcacm_control_request(usbd_device *dev,
 		struct usb_setup_data *req, uint8_t **buf, uint16_t *len,
-		void (**complete)(usbd_device *dev, struct usb_setup_data *req))
+		usbd_control_complete_callback *complete)
 {
 	(void)dev;
 	(void)complete;
