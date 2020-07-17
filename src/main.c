@@ -156,9 +156,38 @@ static bool paused = true;
 static bool single_step = false;
 static bool delaying = false;
 static int delay_ticks_remaining = 0;
+static bool btn_current_state = 0;
+static bool btn_last_state = 0;
+static uint16_t btn_state_cntr = 0;
+
+#define BTN_DEBOUNCE_VALUE	(200)
+
 void sys_tick_handler(void)
 {
-	if (paused && !single_step) return;
+	/* Read button to emulate the pause / resume command*/
+	btn_current_state = gpio_get(GPIOB, GPIO9)?true:false;
+	if (btn_current_state == btn_last_state) {
+		if (btn_state_cntr < 0xFFFF) {
+			++btn_state_cntr;
+		}
+	}
+	else {
+		btn_state_cntr = 0;
+	}
+	btn_last_state = btn_current_state;
+
+	/* Wait for a debounced button */
+	if (btn_state_cntr == BTN_DEBOUNCE_VALUE) {
+		if (btn_current_state) {
+			paused = paused?false:true;
+		}
+	}
+
+	if (paused && !single_step) {
+		/* Switch LED of if mouse-jigger is paused*/
+		gpio_set(GPIOC, GPIO13);
+		return;
+	}
 
 	// FIXME avoid spamming the USB host before our device has been configured
 	static unsigned start_delay = 0;
@@ -350,6 +379,11 @@ static void setup_gpio(void) {
 		GPIO_CNF_OUTPUT_PUSHPULL, GPIO13);
 	gpio_set(GPIOC, GPIO13);
 
+	// Use PB9 as input to pause / resume the mouse jiggler
+	rcc_periph_clock_enable(RCC_GPIOB);
+	gpio_set_mode(GPIOB, GPIO_MODE_INPUT, GPIO_CNF_INPUT_PULL_UPDOWN, GPIO9);
+
+
 }
 
 /* Buffer to be used for control requests. */
@@ -360,7 +394,7 @@ int main(void)
 	setup_clock();
 	setup_gpio();
 
-	//add_mouse_jiggler(30);
+	add_mouse_jiggler(30);
 	//add_keyboard_spammer(6); // 'c'
 
 	// Ddde
